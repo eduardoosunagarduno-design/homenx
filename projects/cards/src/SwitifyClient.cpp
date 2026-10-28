@@ -68,7 +68,10 @@ static_assert(sizeof(BrowseRequest) == 144, "Switify browse request layout");
 std::mutex g_mu; // one session, shared by the worker and the UI thread
 Service g_service{};
 
-std::string text(const char* s, size_t n) { return std::string(s, strnlen(s, n)); }
+std::string text(const char* s, size_t n) { // up to the first 0, never past n
+    const void* end = std::memchr(s, 0, n);
+    return std::string(s, end ? static_cast<const char*>(end) - s : n);
+}
 
 bool connected() { // with g_mu held
     if (serviceIsActive(&g_service)) return true;
