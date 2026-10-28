@@ -187,6 +187,12 @@ private:
     // turns, the song and its controls, the playlist, and the music's bars.
     bool m_musicOpen = false;
     float m_musicIn = 0.f, m_musicSpin = 0.f, m_musicBass = 0.f, m_musicListScroll = 0.f;
+    // Spotify (Switify): the album of the song playing on its background service.
+    std::unique_ptr<nxui::Texture> m_spotifyArt;
+    std::string m_spotifyUrl;
+    float m_spotifyPoll = 0.f;
+    std::future<std::pair<std::string, std::vector<std::uint8_t>>> m_spotifyJob;
+    void pollSpotify(float dt);
     int m_musicZone = 0, m_musicCol = 2, m_musicRow = 0; // zone 0 controls, 1 volume, 2 playlist
     bool m_musicVolDrag = false;
     std::array<float, Audio::kBands> m_viz{};          // the bars, eased

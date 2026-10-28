@@ -1613,4 +1613,33 @@ bool power(Power what, std::string& error) {
     return false;
 }
 
+bool switifyInstalled() {
+    std::error_code ec;
+    return std::filesystem::exists(kSwitifyNro, ec);
+}
+
+std::string switifyArtworkUrl() {
+    const std::vector<std::uint8_t> raw = readFile("sdmc:/config/Switify/current-artwork-url");
+    std::string url(raw.begin(), raw.end());
+    while (!url.empty() && (url.back() == '\n' || url.back() == '\r' || url.back() == ' ')) url.pop_back();
+    return url.rfind("http", 0) == 0 ? url : std::string();
+}
+
+std::vector<std::uint8_t> switifyArtwork(const std::string& url) {
+    if (url.empty()) return {};
+    // Switify's own cache: FNV-1a of the URL, as its overlay names the files.
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (const unsigned char byte : url) {
+        hash ^= byte;
+        hash *= 1099511628211ULL;
+    }
+    char key[17]{};
+    std::snprintf(key, sizeof(key), "%016llx", static_cast<unsigned long long>(hash));
+    std::vector<std::uint8_t> cached = readFile(std::string("sdmc:/config/Switify/artwork-cache/") + key + ".img");
+    if (!cached.empty()) return cached;
+    std::string body;
+    if (get(url, body) == 200 && isPicture(body)) return std::vector<std::uint8_t>(body.begin(), body.end());
+    return {};
+}
+
 } // namespace cards

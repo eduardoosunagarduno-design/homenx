@@ -2860,7 +2860,7 @@ void CardsActivity::drawPower(nxui::Renderer& r) {
     const float dy = card.y - kPowerCard.y;
     icon(r, "power", kPowerCard.x + 46.f, kPowerCard.y + 44.f + dy, 30.f, kWhite.withAlpha(a));
     textMid(r, m_fTitle, "Power", kPowerCard.x + 72.f, kPowerCard.y + 44.f + dy, kWhite.withAlpha(a));
-    const std::string hint = "A Choose    B Back";
+    const std::string hint = switifyInstalled() ? "X Spotify    A Choose    B Back" : "A Choose    B Back";
     textMid(r, m_fBody, hint, kPowerCard.x + kPowerCard.width - 36.f - measured(m_fBody, hint).x, kPowerCard.y + 44.f + dy,
             kMuted.withAlpha(0.8f * a));
     const int n = std::min<int>(4, static_cast<int>(m_powerItems.size()));
@@ -3141,6 +3141,12 @@ void CardsActivity::updateMusic() {
         m_audio.play("hide_modal");
         return;
     }
+    if (in.isDown(B::X) && switifyInstalled()) { // Spotify, full screen
+        m_musicOpen = false;
+        m_audio.play("activation");
+        openNro(kSwitifyNro);
+        return;
+    }
     const int songs = static_cast<int>(m_audio.titles().size());
     const int zone = m_musicZone;
     if (zone == 0) {
@@ -3220,6 +3226,34 @@ bool CardsActivity::musicTouch() {
     return true;
 }
 
+// The Switify service's album art, checked every couple of seconds while Music is open.
+void CardsActivity::pollSpotify(float dt) {
+    if (m_spotifyJob.valid()) {
+        if (m_spotifyJob.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        auto [url, bytes] = m_spotifyJob.get();
+        if (url.empty()) { // nothing playing on Switify's service
+            m_spotifyUrl.clear();
+            m_spotifyArt.reset();
+        } else if (url != m_spotifyUrl && !bytes.empty()) { // a new album (kept until it loads, else retried)
+            auto tex = std::make_unique<nxui::Texture>();
+            if (tex->loadFromMemory(app().gpu(), app().renderer(), bytes.data(), bytes.size(), 256)) {
+                m_spotifyArt = std::move(tex);
+                m_spotifyUrl = url;
+            }
+        }
+        m_spotifyPoll = 2.f;
+        return;
+    }
+    if ((m_spotifyPoll -= dt) > 0.f) return;
+    const std::string known = m_spotifyUrl;
+    m_spotifyJob = std::async(std::launch::async, [known]() {
+        std::pair<std::string, std::vector<std::uint8_t>> out;
+        out.first = switifyArtworkUrl();
+        if (!out.first.empty() && out.first != known) out.second = switifyArtwork(out.first);
+        return out;
+    });
+}
+
 void CardsActivity::drawMusic(nxui::Renderer& r) {
     if (!m_musicOpen) return;
     const float a = easeOut(m_musicIn);
@@ -3237,7 +3271,9 @@ void CardsActivity::drawMusic(nxui::Renderer& r) {
     float bass = 0.f;
     for (int i = 0; i < 8; ++i) bass += m_viz[(size_t)i] / 8.f;
     m_musicBass += (bass - m_musicBass) * 0.25f;
-    if (playing) m_musicSpin += dt * 1.1f;
+    pollSpotify(dt);
+    const bool spotify = m_spotifyArt && m_spotifyArt->valid();
+    if (playing || spotify) m_musicSpin += dt * 1.1f;
 
     r.drawRect({0.f, 0.f, 1280.f, 720.f}, nxui::Color(0.f, 0.f, 0.f, 0.5f * a));
     const nxui::Rect card = scaled(kMusicCard, 0.95f + 0.05f * easeOutBack(m_musicIn));
@@ -3266,6 +3302,14 @@ void CardsActivity::drawMusic(nxui::Renderer& r) {
         const nxui::Vec2 p2{c.x + std::cos(th + 0.28f) * (R - 6.f), c.y + std::sin(th + 0.28f) * (R - 6.f)};
         r.drawTriangle(c, p1, p2, nxui::Color(1.f, 1.f, 1.f, 0.07f * a));
     }
+    if (spotify) { // the Spotify album as the record's label
+        const float L = 84.f;
+        r.drawCircle(c, L + 3.f, nxui::Color(1.f, 1.f, 1.f, 0.14f * a), 64);
+        r.drawTextureRounded(m_spotifyArt.get(), {c.x - L, c.y - L, L * 2.f, L * 2.f}, L, kWhite.withAlpha(a));
+        const nxui::Vec2 dot{c.x + std::cos(m_musicSpin * 1.0f) * (L - 10.f), c.y + std::sin(m_musicSpin * 1.0f) * (L - 10.f)};
+        r.drawCircle(dot, 4.f, nxui::Color(1.f, 1.f, 1.f, 0.7f * a), 16);
+        r.drawCircle(c, 7.f, nxui::Color(0.03f, 0.03f, 0.05f, a), 16);
+    } else {
     r.drawCircle(c, 50.f, accent(a), 48); // its label
     r.drawCircle(c, 50.f, nxui::Color(1.f, 1.f, 1.f, 0.12f * a), 48);
     r.drawCircle(c, 42.f, accent(a), 48);
@@ -3273,6 +3317,7 @@ void CardsActivity::drawMusic(nxui::Renderer& r) {
     r.drawCircle(dot, 4.f, nxui::Color(1.f, 1.f, 1.f, 0.6f * a), 16);
     icon(r, "music", c.x, c.y, 34.f, kWhite.withAlpha(a));
     r.drawCircle(c, 4.f, nxui::Color(0.03f, 0.03f, 0.05f, a), 16);
+    }
 
     // The song.
     const long now = m_audio.playing();

@@ -169,4 +169,11 @@ struct NetTest {
 };
 void testConnection(NetTest& t);
 
+// Switify (Spotify for Switch): its background service writes the artwork URL of
+// the song playing now to sdmc:/config/Switify/current-artwork-url.
+inline constexpr const char* kSwitifyNro = "sdmc:/switch/Switify/Switify.nro";
+bool switifyInstalled();
+std::string switifyArtworkUrl();                                   // "" when nothing plays
+std::vector<std::uint8_t> switifyArtwork(const std::string& url);  // Switify's cache, else downloaded
+
 } // namespace cards
