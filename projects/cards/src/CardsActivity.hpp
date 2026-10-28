@@ -25,6 +25,8 @@
 #include <deque>
 #include <functional>
 #include <future>
+
+#include "SwitifyClient.hpp"
 #include <map>
 #include <memory>
 #include <mutex>
@@ -191,8 +193,17 @@ private:
     std::unique_ptr<nxui::Texture> m_spotifyArt;
     std::string m_spotifyUrl;
     float m_spotifyPoll = 0.f;
-    std::future<std::pair<std::string, std::vector<std::uint8_t>>> m_spotifyJob;
+    struct SpotifyRead {
+        switify::State state;
+        std::string url;
+        std::vector<std::uint8_t> art;
+    };
+    std::future<SpotifyRead> m_spotifyJob;
+    switify::State m_sp;         // the songs, the queue and the controls of Switify's service
+    bool m_spStarted = false, m_spAsked = false;
     void pollSpotify(float dt);
+    bool spotifyMode() const { return m_sp.running; }
+    void spotifyChoose(int row);
     int m_musicZone = 0, m_musicCol = 2, m_musicRow = 0; // zone 0 controls, 1 volume, 2 playlist
     bool m_musicVolDrag = false;
     std::array<float, Audio::kBands> m_viz{};          // the bars, eased
