@@ -2860,8 +2860,7 @@ void CardsActivity::drawPower(nxui::Renderer& r) {
     const float dy = card.y - kPowerCard.y;
     icon(r, "power", kPowerCard.x + 46.f, kPowerCard.y + 44.f + dy, 30.f, kWhite.withAlpha(a));
     textMid(r, m_fTitle, "Power", kPowerCard.x + 72.f, kPowerCard.y + 44.f + dy, kWhite.withAlpha(a));
-    const std::string hint = !switifyInstalled() ? "A Choose    B Back"
-                           : sp ? "X Spotify    Y Library    L Back    B Close" : "X Spotify    A Choose    B Back";
+    const std::string hint = "A Choose    B Back";
     textMid(r, m_fBody, hint, kPowerCard.x + kPowerCard.width - 36.f - measured(m_fBody, hint).x, kPowerCard.y + 44.f + dy,
             kMuted.withAlpha(0.8f * a));
     const int n = std::min<int>(4, static_cast<int>(m_powerItems.size()));
@@ -3363,7 +3362,8 @@ void CardsActivity::drawMusic(nxui::Renderer& r) {
     const float dy = card.y - kMusicCard.y;
     icon(r, "music", kMusicCard.x + 46.f, kMusicCard.y + 46.f + dy, 28.f, kWhite.withAlpha(a));
     textMid(r, m_fTitle, "Music", kMusicCard.x + 72.f, kMusicCard.y + 46.f + dy, kWhite.withAlpha(a));
-    const std::string hint = "A Choose    B Back";
+    const std::string hint = !switifyInstalled() ? "A Choose    B Back"
+                           : sp ? "X Spotify    Y Library    L Back    B Close" : "X Spotify    A Choose    B Back";
     textMid(r, m_fBody, hint, kMusicCard.x + kMusicCard.width - 36.f - measured(m_fBody, hint).x, kMusicCard.y + 46.f + dy,
             kMuted.withAlpha(0.8f * a));
 
